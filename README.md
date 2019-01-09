@@ -1,3 +1,49 @@
+# David's notes
+
+Added code to set up vep to the end of the Dockerfile
+
+Followed this gist https://gist.github.com/ckandoth/f265ea7c59a880e28b1e533a6e935697
+
+Run 
+```
+perl INSTALL.pl --AUTO af --SPECIES homo_sapiens --ASSEMBLY GRCh37 --DESTDIR $VEP_PATH --CACHEDIR $VEP_DATA
+perl INSTALL.pl --AUTO af --SPECIES homo_sapiens --ASSEMBLY GRCh38 --DESTDIR $VEP_PATH --CACHEDIR $VEP_DATA
+perl INSTALL.pl --AUTO af --SPECIES mus_musculus --ASSEMBLY GRCm38 --DESTDIR $VEP_PATH --CACHEDIR $VEP_DATA
+```
+From within docker container:
+```
+docker run -it -v $PWD/vepdata:/root/.vep mawds/vc
+f2maf /bin/bash -c 'perl INSTALL.pl --AUTO af --SPECIES homo_sapiens --ASSEMBLY 
+GRCh38 --DESTDIR $VEP_PATH --CACHEDIR $VEP_DATA' 
+etc..
+
+```
+etc.  Note single quotes around command - `$VEP_PATH` and `$VEP_DATA` are defined inside the container
+
+Similarly, run the following inside the container (these each take several hourse to run)
+
+```
+perl convert_cache.pl --species homo_sapiens --version 86_GRCh37 --dir $VEP_DATA
+perl convert_cache.pl --species homo_sapiens --version 86_GRCh38 --dir $VEP_DATA
+perl convert_cache.pl --species mus_musculus --version 86_GRCm38 --dir $VEP_DATA```
+
+Finally, donwload ExAC:
+```
+curl -L ftp://ftp.broadinstitute.org:/pub/ExAC_release/release0.3.1/subsets/ExAC_nonTCGA.r0.3.1.sites.vep.vcf.gz > $VEP_DATA/ExAC_nonTCGA.r0.3.1.sites.vep.vcf.gz
+```
+
+(This can be done on the host - using the host's location of `$VEP_DATA`).  The file is ~3GB
+
+## To run:
+
+Example invocation:
+
+```
+docker run -it -v $PWD/vepdata:/root/.vep -v $PWD/testmaf:/opt/maf mawds/vcf2maf /bin/bash -c 'perl ./maf2maf.pl --input-maf=/opt/maf/simplemaf.maf --output-maf=/opt/maf/processedmaf.maf --ref-fasta /root/.vep/homo_sapiens/86_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa.gz --vep-path=/opt/variant_effect_predictor_86/ensembl-tools-release-86/scripts/variant_effect_predictor/'
+```
+
+
+
 vcf<img src="http://i.giphy.com/R6X7GehJWQYms.gif" width="30">maf
 =======
 

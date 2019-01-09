@@ -67,14 +67,14 @@ MAINTAINER Michele Mattioni, Seven Bridges, <michele.mattioni@sbgenomics.com>
 # Based on https://hub.docker.com/r/ensemblorg/ensembl-vep/dockerfile and
 # https://gist.github.com/ckandoth/f265ea7c59a880e28b1e533a6e935697
 
-ENV VEP_PATH=/opt/vep
-ENV VEP_DATA=/opt/.vep
+ENV VEP_PATH=/opt/variant_effect_predictor_86/ensembl-tools-release-86/scripts/variant_effect_predictor
+ENV VEP_DATA=/root/.vep
 
-RUN mkdir $VEP_PATH $VEP_DATA && cd $VEP_PATH && curl -LO https://github.com/Ensembl/ensembl-tools/archive/release/86.tar.gz && tar -vzxf 86.tar.gz --starting-file variant_effect_predictor --transform='s|.*/|./|g'&& rm 86.tar.gz
 
 ENV PERL5LIB=$VEP_PATH:${PERL5LIB}
 ENV PATH=$VEP_PATH/htslib:${PATH}
 
-# Just downloading the one of these I was using, to save space
-RUN rsync -zvh rsync://ftp.ensembl.org/ensembl/pub/release-86/variation/VEP/homo_sapiens_vep_86_GRCh37.tar.gz $VEP_DATA && cat $VEP_DATA/*_vep_86_GRC{h37,h38,m38}.tar.gz | tar -izxf - -C $VEP_DATA && rm $VEP_DATA/*_vep_86_GRC{h37,h38,m38}.tar.gz
-RUN perl INSTALL.pl --AUTO af --SPECIES homo_sapiens --ASSEMBLY GRCh37 --DESTDIR $VEP_PATH --CACHEDIR $VEP_DATA
+
+WORKDIR /opt/variant_effect_predictor_86/ensembl-tools-release-86/scripts/variant_effect_predictor/
+WORKDIR /opt/vcf2maf
+
