@@ -1,38 +1,86 @@
-# David's notes
+# vcf2maf
 
-Added code to set up vep to the end of the Dockerfile
+This repository lets you set up a vcf2maf (and hence maf2maf) Docker image.  It is based on the [MSKCC's vcf2maf repository](https://github.com/mskcc/vcf2maf) repository - the original README follows these notes.  In contrast to the official distribution, this Docker image makes VEP available, with its offline cache.
 
-Followed this gist https://gist.github.com/ckandoth/f265ea7c59a880e28b1e533a6e935697
+# Notes
 
-Run 
+To build the Docker file added the code set up vep to the end of the Dockerfile, following the instructions in this gist https://gist.github.com/ckandoth/f265ea7c59a880e28b1e533a6e935697.
+
+To build a new Docker image, run, from this directory,
+
+```
+docker build . -t user/vcf2maf
+```
+I previously used `mawds` as `user`.
+
+You will need to decide where to put the vep cache data on the host machine - I used `/opt/vepdata`.  
+
+Having built the image, you will need to download and unpack the (large) offline caches to this directory:
+
+(this is taken from the gist referenced above)
+
+```
+export VEP_DATA=/opt/vepdata
+rsync -zvh rsync://ftp.ensembl.org/ensembl/pub/release-86/variation/VEP/homo_sapiens_vep_86_GRCh37.tar.gz $VEP_DATA
+rsync -zvh rsync://ftp.ensembl.org/ensembl/pub/release-86/variation/VEP/homo_sapiens_vep_86_GRCh38.tar.gz $VEP_DATA
+rsync -zvh rsync://ftp.ensembl.org/ensembl/pub/release-86/variation/VEP/mus_musculus_vep_86_GRCm38.tar.gz $VEP_DATA
+cat $VEP_DATA/*_vep_86_GRC{h37,h38,m38}.tar.gz | tar -izxf - -C $VEP_DATA
+unset VEP_DATA 
+```
+
+These then need to be installed from within the Docker container:
+
+```
+docker run -it -v $PWD/vepdata:/root/.vep \
+	mawds/vcf2maf /bin/bash -c \
+	'perl INSTALL.pl --AUTO af --SPECIES homo_sapiens \
+	--ASSEMBLY GRCh37 --DESTDIR $VEP_PATH --CACHEDIR $VEP_DATA' 
+
+docker run -it -v $PWD/vepdata:/root/.vep \
+	mawds/vcf2maf /bin/bash -c \
+	'perl INSTALL.pl --AUTO af --SPECIES homo_sapiens \
+	--ASSEMBLY GRCh38 --DESTDIR $VEP_PATH --CACHEDIR $VEP_DATA' 
+
+docker run -it -v $PWD/vepdata:/root/.vep \
+	mawds/vcf2maf /bin/bash -c \
+	'perl INSTALL.pl --AUTO af --SPECIES mus_musculus \
+	--ASSEMBLY GRCm38 --DESTDIR $VEP_PATH --CACHEDIR $VEP_DATA' 
+```
+etc.  Note single quotes around command - `$VEP_PATH` and `$VEP_DATA` are defined inside the container
+
+These run the have the effect of running the following lines from the gist within the container:
+
 ```
 perl INSTALL.pl --AUTO af --SPECIES homo_sapiens --ASSEMBLY GRCh37 --DESTDIR $VEP_PATH --CACHEDIR $VEP_DATA
 perl INSTALL.pl --AUTO af --SPECIES homo_sapiens --ASSEMBLY GRCh38 --DESTDIR $VEP_PATH --CACHEDIR $VEP_DATA
 perl INSTALL.pl --AUTO af --SPECIES mus_musculus --ASSEMBLY GRCm38 --DESTDIR $VEP_PATH --CACHEDIR $VEP_DATA
 ```
-From within docker container:
-```
-docker run -it -v $PWD/vepdata:/root/.vep mawds/vc
-f2maf /bin/bash -c 'perl INSTALL.pl --AUTO af --SPECIES homo_sapiens --ASSEMBLY 
-GRCh38 --DESTDIR $VEP_PATH --CACHEDIR $VEP_DATA' 
-etc..
+
+You will then need to run the following commands to covert the offline cache.  Each command takes several hours to run:
 
 ```
-etc.  Note single quotes around command - `$VEP_PATH` and `$VEP_DATA` are defined inside the container
+docker run -it -v $PWD/vepdata:/root/.vep \
+	mawds/vcf2maf /bin/bash -c \
+	'perl convert_cache.pl --species homo_sapiens \
+	--version 86_GRCh37 --dir $VEP_DATA'
 
-Similarly, run the following inside the container (these each take several hourse to run)
+docker run -it -v $PWD/vepdata:/root/.vep \
+	mawds/vcf2maf /bin/bash -c \
+	'perl convert_cache.pl --species homo_sapiens \
+	--version 86_GRCh38 --dir $VEP_DATA'
 
+docker run -it -v $PWD/vepdata:/root/.vep \
+	mawds/vcf2maf /bin/bash -c \
+	'perl convert_cache.pl --species mus_musculus \
+	--version 86_GRCm38 --dir $VEP_DATA'
 ```
-perl convert_cache.pl --species homo_sapiens --version 86_GRCh37 --dir $VEP_DATA
-perl convert_cache.pl --species homo_sapiens --version 86_GRCh38 --dir $VEP_DATA
-perl convert_cache.pl --species mus_musculus --version 86_GRCm38 --dir $VEP_DATA```
 
-Finally, donwload ExAC:
+Finally, donwload ExAC on the host machine:
 ```
-curl -L ftp://ftp.broadinstitute.org:/pub/ExAC_release/release0.3.1/subsets/ExAC_nonTCGA.r0.3.1.sites.vep.vcf.gz > $VEP_DATA/ExAC_nonTCGA.r0.3.1.sites.vep.vcf.gz
+curl -L ftp://ftp.broadinstitute.org:/pub/ExAC_release/release0.3.1/subsets/ExAC_nonTCGA.r0.3.1.sites.vep.vcf.gz > /opt/vepdata/ExAC_nonTCGA.r0.3.1.sites.vep.vcf.gz
 ```
 
-(This can be done on the host - using the host's location of `$VEP_DATA`).  The file is ~3GB
+(Substituting /opt/vepdata if you stored the vep data elsewhere). The file is ~3GB
 
 ## To run:
 
@@ -43,6 +91,7 @@ docker run -it -v $PWD/vepdata:/root/.vep -v $PWD/testmaf:/opt/maf mawds/vcf2maf
 ```
 
 
+The original README follows:
 
 vcf<img src="http://i.giphy.com/R6X7GehJWQYms.gif" width="30">maf
 =======
